@@ -23,15 +23,16 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
-	"github.com/spectrocloud/cluster-api-provider-vsphere-static-ip/pkg/ipam"
-	"github.com/spectrocloud/cluster-api-provider-vsphere-static-ip/pkg/ipam/factory"
-	"github.com/spectrocloud/cluster-api-provider-vsphere-static-ip/pkg/util"
 	"k8s.io/apimachinery/pkg/runtime"
-	infrav1 "sigs.k8s.io/cluster-api-provider-vsphere/api/v1alpha4"
-	capi "sigs.k8s.io/cluster-api/api/v1alpha4"
+	infrav1 "sigs.k8s.io/cluster-api-provider-vsphere/apis/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	clusterutilv1 "sigs.k8s.io/cluster-api/util"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/spectrocloud/cluster-api-provider-vsphere-static-ip/pkg/ipam"
+	"github.com/spectrocloud/cluster-api-provider-vsphere-static-ip/pkg/ipam/factory"
+	"github.com/spectrocloud/cluster-api-provider-vsphere-static-ip/pkg/util"
 )
 
 // VSphereClusterReconciler reconciles a VSphereCluster object
@@ -54,7 +55,7 @@ func (r *VSphereClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, util.IgnoreNotFound(err)
 	}
 
-	//handle the case where gvk is empty
+	// handle the case where gvk is empty
 	if vSphereCluster.GroupVersionKind().Empty() {
 		log.V(0).Info("setting the missing gvk for vSphereCluster")
 		vSphereCluster.Kind = "VSphereCluster"
@@ -78,7 +79,7 @@ func (r *VSphereClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	return *res, err
 }
 
-func (r *VSphereClusterReconciler) reconcileVSphereClusterControlPlaneEndpoint(cluster *capi.Cluster, vSphereCluster *infrav1.VSphereCluster) (*ctrl.Result, error) {
+func (r *VSphereClusterReconciler) reconcileVSphereClusterControlPlaneEndpoint(cluster *clusterv1.Cluster, vSphereCluster *infrav1.VSphereCluster) (*ctrl.Result, error) {
 	if vSphereCluster == nil {
 		r.Log.V(0).Info("invalid VSphereCluster, skipping reconcile control plane endpoint")
 		return &ctrl.Result{}, nil

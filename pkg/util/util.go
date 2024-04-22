@@ -3,12 +3,13 @@ package util
 import (
 	"fmt"
 
-	"github.com/spectrocloud/cluster-api-provider-vsphere-static-ip/pkg/ipam"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
-	infrav1 "sigs.k8s.io/cluster-api-provider-vsphere/api/v1alpha4"
+	infrav1 "sigs.k8s.io/cluster-api-provider-vsphere/apis/v1beta1"
+
+	"github.com/spectrocloud/cluster-api-provider-vsphere-static-ip/pkg/ipam"
 )
 
 func IsMachineIPAllocationDHCP(devices []infrav1.NetworkDeviceSpec) bool {

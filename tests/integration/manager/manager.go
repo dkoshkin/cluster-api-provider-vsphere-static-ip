@@ -5,16 +5,17 @@ import (
 
 	ipam "github.com/metal3-io/ip-address-manager/api/v1alpha1"
 	. "github.com/onsi/gomega"
-	"github.com/spectrocloud/cluster-api-provider-vsphere-static-ip/tests/integration/testenv"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
-	capivsphere "sigs.k8s.io/cluster-api-provider-vsphere/api/v1alpha4"
-	capiv1alpha4 "sigs.k8s.io/cluster-api/api/v1alpha4"
-	kubeadmv4 "sigs.k8s.io/cluster-api/controlplane/kubeadm/api/v1alpha4"
+	infrav1 "sigs.k8s.io/cluster-api-provider-vsphere/apis/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	kcpv1 "sigs.k8s.io/cluster-api/controlplane/kubeadm/api/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
+
+	"github.com/spectrocloud/cluster-api-provider-vsphere-static-ip/tests/integration/testenv"
 )
 
 var (
@@ -57,14 +58,14 @@ func (m *Manager) InitEnvironment(input InitEnvironmentInput) {
 		CRDDirectoryPaths: input.CRDs,
 	}
 
-	//+kubebuilder:scaffold:scheme
-	err := capiv1alpha4.AddToScheme(scheme.Scheme)
+	// +kubebuilder:scaffold:scheme
+	err := clusterv1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
-	err = capivsphere.AddToScheme(scheme.Scheme)
+	err = infrav1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 	err = ipam.AddToScheme(scheme.Scheme)
 	Expect(err).ToNot(HaveOccurred())
-	err = kubeadmv4.AddToScheme(scheme.Scheme)
+	err = kcpv1.AddToScheme(scheme.Scheme)
 	Expect(err).ToNot(HaveOccurred())
 
 	cfg, _ := testEnv.Start()

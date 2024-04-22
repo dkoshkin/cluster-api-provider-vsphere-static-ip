@@ -22,15 +22,18 @@ import (
 	"time"
 
 	ipamv1 "github.com/metal3-io/ip-address-manager/api/v1alpha1"
-	"github.com/spectrocloud/cluster-api-provider-vsphere-static-ip/controllers"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
-	"k8s.io/klog/klogr"
-	infrav1 "sigs.k8s.io/cluster-api-provider-vsphere/api/v1alpha4"
-	capi "sigs.k8s.io/cluster-api/api/v1alpha4"
-	kubeadmcontrolplane "sigs.k8s.io/cluster-api/controlplane/kubeadm/api/v1alpha4"
+	"k8s.io/klog/v2/klogr"
+	infrav1 "sigs.k8s.io/cluster-api-provider-vsphere/apis/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	kcpv1 "sigs.k8s.io/cluster-api/controlplane/kubeadm/api/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
+
+	"github.com/spectrocloud/cluster-api-provider-vsphere-static-ip/controllers"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -44,9 +47,8 @@ func init() {
 
 	_ = ipamv1.AddToScheme(scheme)
 	_ = infrav1.AddToScheme(scheme)
-	_ = capi.AddToScheme(scheme)
-	_ = capi.AddToScheme(scheme)
-	_ = kubeadmcontrolplane.AddToScheme(scheme)
+	_ = clusterv1.AddToScheme(scheme)
+	_ = kcpv1.AddToScheme(scheme)
 
 	// +kubebuilder:scaffold:scheme
 }
@@ -67,7 +69,7 @@ func main() {
 	flag.IntVar(&maxConcurrentReconciles, "max-concurrency", 2, "MaxConcurrentReconciles is the maximum number of concurrent Reconciles which can be run")
 	flag.Parse()
 
-	//ctrl.SetLogger(zap.New(zap.UseDevMode(true)))
+	// ctrl.SetLogger(zap.New(zap.UseDevMode(true)))
 	ctrl.SetLogger(klogr.New())
 	if watchNamespace == "" {
 		setupLog.Info("namespace is not specified. will watch over all namespaces")
@@ -76,14 +78,23 @@ func main() {
 	}
 	setupLog.Info("resync period", "every", syncPeriod)
 
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:             scheme,
-		MetricsBindAddress: metricsAddr,
-		LeaderElection:     enableLeaderElection,
-		LeaderElectionID:   "controller-leader-election-capv-static-ip",
-		SyncPeriod:         &syncPeriod,
-		Namespace:          watchNamespace,
-	})
+	opts := ctrl.Options{
+		Scheme: scheme,
+		Metrics: metricsserver.Options{
+			BindAddress: metricsAddr,
+		},
+		LeaderElection:   enableLeaderElection,
+		LeaderElectionID: "controller-leader-election-capv-static-ip",
+		Cache: cache.Options{
+			SyncPeriod: &syncPeriod,
+		},
+	}
+	if watchNamespace != "" {
+		opts.Cache.DefaultNamespaces = map[string]cache.Config{
+			watchNamespace: {},
+		}
+	}
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), opts)
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)

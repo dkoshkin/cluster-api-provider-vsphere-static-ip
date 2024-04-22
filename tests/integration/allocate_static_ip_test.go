@@ -3,10 +3,11 @@ package integration
 import (
 	. "github.com/metal3-io/ip-address-manager/controllers"
 	. "github.com/onsi/ginkgo"
-	. "github.com/spectrocloud/cluster-api-provider-vsphere-static-ip/controllers"
-	"k8s.io/klog/klogr"
+	"k8s.io/klog/v2/klogr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	. "github.com/spectrocloud/cluster-api-provider-vsphere-static-ip/controllers"
 )
 
 var (

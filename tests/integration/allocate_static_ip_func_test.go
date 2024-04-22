@@ -10,17 +10,17 @@ import (
 	"github.com/metal3-io/ip-address-manager/ipam"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	. "github.com/spectrocloud/cluster-api-provider-vsphere-static-ip/controllers"
-	. "github.com/spectrocloud/cluster-api-provider-vsphere-static-ip/pkg/ipam"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	capivsphere "sigs.k8s.io/cluster-api-provider-vsphere/api/v1alpha4"
-	infrav1 "sigs.k8s.io/cluster-api-provider-vsphere/api/v1alpha4"
-	capiv1alpha3 "sigs.k8s.io/cluster-api/api/v1alpha4"
-	kubeadmv3 "sigs.k8s.io/cluster-api/controlplane/kubeadm/api/v1alpha4"
+	infrav1 "sigs.k8s.io/cluster-api-provider-vsphere/apis/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	kcpv1 "sigs.k8s.io/cluster-api/controlplane/kubeadm/api/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	. "github.com/spectrocloud/cluster-api-provider-vsphere-static-ip/controllers"
+	. "github.com/spectrocloud/cluster-api-provider-vsphere-static-ip/pkg/ipam"
 )
 
 const (
@@ -46,13 +46,13 @@ func initVariables() {
 		Log:    ctrl.Log.WithName("controllers").WithName("VSphereCluster"),
 	}
 
-	objects := []runtime.Object{}
+	objects := []client.Object{}
 	objects = append(objects, tm.M3IpamIPPool)
 	objects = append(objects, tm.Cluster)
 	objects = append(objects, tm.Machine)
 	objects = append(objects, tm.KubeadmControlPlane)
 
-	ipamClient := fake.NewFakeClientWithScheme(setupScheme(), objects...)
+	ipamClient := fake.NewClientBuilder().WithScheme(setupScheme()).WithObjects(objects...).Build()
 	m3ipamReconciler = &IPPoolReconciler{
 		Client:         ipamClient,
 		Log:            ctrl.Log.WithName("controllers").WithName("IPPool"),
@@ -78,13 +78,13 @@ func initVariables() {
 
 func setupScheme() *runtime.Scheme {
 	s := runtime.NewScheme()
-	err := capiv1alpha3.AddToScheme(s)
+	err := clusterv1.AddToScheme(s)
 	Expect(err).NotTo(HaveOccurred())
-	err = capivsphere.AddToScheme(s)
+	err = infrav1.AddToScheme(s)
 	Expect(err).NotTo(HaveOccurred())
 	err = ipamv1.AddToScheme(s)
 	Expect(err).ToNot(HaveOccurred())
-	err = kubeadmv3.AddToScheme(s)
+	err = kcpv1.AddToScheme(s)
 	Expect(err).ToNot(HaveOccurred())
 
 	return s
@@ -241,7 +241,7 @@ func verifyNameserversAndSearchDomainsAllocation() {
 		Name:      tm.M3IpamIPPool.Name,
 	}, existingIPool)).To(Succeed())
 
-	//updating nameservers and searchDomains
+	// updating nameservers and searchDomains
 	existingIPool.Spec.DNSServers = []ipamv1.IPAddressStr{"8.8.8.8"}
 	existingIPool.SetAnnotations(map[string]string{SearchDomainsKey: "example.com"})
 	Expect(tm.GetClient().Update(ctx, existingIPool)).To(Succeed())
@@ -342,11 +342,11 @@ func createNewVSphereMachine(name string, isMaster bool, template *infrav1.VSphe
 		vSphereMachine.SetLabels(map[string]string{LabelControlPlane: ""})
 	}
 
-	//set 'clone-from-name' annotation, which is used to select the IPPool for the VM
-	vSphereMachine.SetAnnotations(map[string]string{capiv1alpha3.TemplateClonedFromNameAnnotation: template.Name})
+	// set 'clone-from-name' annotation, which is used to select the IPPool for the VM
+	vSphereMachine.SetAnnotations(map[string]string{clusterv1.TemplateClonedFromNameAnnotation: template.Name})
 	vSphereMachine.SetOwnerReferences([]metav1.OwnerReference{
 		{
-			APIVersion: "cluster.x-k8s.io/v1alpha3",
+			APIVersion: "cluster.x-k8s.io/v1beta1",
 			Kind:       "Machine",
 			Name:       machine.Name,
 			UID:        machine.UID,

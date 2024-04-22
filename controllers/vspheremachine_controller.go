@@ -23,17 +23,18 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	infrav1 "sigs.k8s.io/cluster-api-provider-vsphere/apis/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterutilv1 "sigs.k8s.io/cluster-api/util"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	"github.com/spectrocloud/cluster-api-provider-vsphere-static-ip/pkg/ipam"
 	"github.com/spectrocloud/cluster-api-provider-vsphere-static-ip/pkg/ipam/factory"
 	_ "github.com/spectrocloud/cluster-api-provider-vsphere-static-ip/pkg/ipam/metal3io"
 	"github.com/spectrocloud/cluster-api-provider-vsphere-static-ip/pkg/util"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
-	infrav1 "sigs.k8s.io/cluster-api-provider-vsphere/api/v1alpha4"
-	capi "sigs.k8s.io/cluster-api/api/v1alpha4"
-	clusterutilv1 "sigs.k8s.io/cluster-api/util"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // VSphereMachineReconciler reconciles a VSphereMachine object
@@ -67,7 +68,7 @@ func (r *VSphereMachineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, util.IgnoreNotFound(err)
 	}
 
-	//handle the case where gvk is empty
+	// handle the case where gvk is empty
 	if vsphereMachine.GroupVersionKind().Empty() {
 		log.V(0).Info("setting the missing gvk for vsphereMachine")
 		vsphereMachine.Kind = "VSphereMachine"
@@ -103,7 +104,7 @@ func (r *VSphereMachineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	return *res, err
 }
 
-func (r *VSphereMachineReconciler) reconcileVSphereMachineIPAddress(cluster *capi.Cluster, vSphereMachine *infrav1.VSphereMachine) (*ctrl.Result, error) {
+func (r *VSphereMachineReconciler) reconcileVSphereMachineIPAddress(cluster *clusterv1.Cluster, vSphereMachine *infrav1.VSphereMachine) (*ctrl.Result, error) {
 	if vSphereMachine == nil {
 		r.Log.V(0).Info("invalid VSphereMachine, skipping reconcile IPAddress")
 		return &ctrl.Result{}, nil
@@ -172,18 +173,18 @@ func (r *VSphereMachineReconciler) reconcileVSphereMachineIPAddress(cluster *cap
 
 		log.V(0).Info("static IP selected for VSphereMachine", "IPAddressName", ip.GetName())
 
-		//capv expects static-ip in the CIDR format
+		// capv expects static-ip in the CIDR format
 		ipCidr := fmt.Sprintf("%s/%d", util.GetAddress(ip), util.GetMask(ip))
 		log.V(0).Info("assigning IP address to VSphereMachine", "IPAddress", util.GetAddress(ip))
 
 		devices[i].IPAddrs = []string{ipCidr}
 		gateway := util.GetGateway(ip)
-		//TODO: handle ipv6
-		//gateway4 is required if DHCP4 is disabled, gateway6 is required if DHCP6 is disabled
+		// TODO: handle ipv6
+		// gateway4 is required if DHCP4 is disabled, gateway6 is required if DHCP6 is disabled
 		devices[i].Gateway4 = gateway
 
-		//if configured, the values of nameservers and searchDomains from the IPPool
-		//will override the default values set from the VSphereMachineTemplate
+		// if configured, the values of nameservers and searchDomains from the IPPool
+		// will override the default values set from the VSphereMachineTemplate
 		nameservers := util.GetDNSServers(ipPool)
 		if len(nameservers) > 0 {
 			devices[i].Nameservers = nameservers
@@ -205,8 +206,8 @@ func (r *VSphereMachineReconciler) reconcileVSphereMachineIPAddress(cluster *cap
 
 func (r *VSphereMachineReconciler) getIPPoolMatchLabels(cli client.Client, vSphereMachine *infrav1.VSphereMachine) (map[string]string, error) {
 
-	//match labels for the IPPool are retrieved from the VSphereMachineTemplate
-	vmTemplateName, ok := vSphereMachine.GetAnnotations()[capi.TemplateClonedFromNameAnnotation]
+	// match labels for the IPPool are retrieved from the VSphereMachineTemplate
+	vmTemplateName, ok := vSphereMachine.GetAnnotations()[clusterv1.TemplateClonedFromNameAnnotation]
 	if !ok {
 		return nil, fmt.Errorf("VSphereMachine %s has no value set in the 'cloned-from-name' annotation", vSphereMachine.Name)
 	}
